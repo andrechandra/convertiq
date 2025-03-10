@@ -9,7 +9,7 @@ export default function Home() {
         <nav className="flex justify-end items-center">
           <ThemeToggle />
         </nav>
-        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 max-w-2xl">
+        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
           <h1 className="font-poppins font-extrabold leading-tight tracking-tighter space-y-2 text-xl sm:text-2xl md:text-3xl lg:text-4xl">
             ConvertiQ
           </h1>
