@@ -1,7 +1,7 @@
 export const siteConfig = {
-  title: 'Next.js + Tailwind CSS Starter Template',
+  title: 'Convertiq | File Converter',
   description:
-    'A starter template with Next.js, Tailwind CSS, TypeScript, and shadcn/ui',
+    '	Next.js application for converting files between different formats',
   keywords: [
     'nextjs',
     'tailwindcss',
@@ -9,6 +9,10 @@ export const siteConfig = {
     'shadcn',
     'starter',
     'template',
+    'converter',
+    'file',
+    'file-converter',
+    'convertly',
   ],
-  url: 'https://next-shadcn-starter-template.vercel.app/',
+  url: 'https://convertiq.vercel.app/',
 }
