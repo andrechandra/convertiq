@@ -5,7 +5,7 @@ import FileConverter from '@/components/file-converter'
 export default function Home() {
   return (
     <main className="min-h-screen bg-background flex flex-col">
-      <div className="container mx-auto px-8 md:px-16 py-16 flex-1 flex flex-col">
+      <div className="container mx-auto px-8 md:px-16 py-8 flex-1 flex flex-col max-w-7xl">
         <nav className="flex justify-end items-center">
           <ThemeToggle />
         </nav>

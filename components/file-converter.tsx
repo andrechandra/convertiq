@@ -81,6 +81,48 @@ export default function FileConverter() {
   >('idle')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [debugLog, setDebugLog] = useState<string[]>([])
+  const [showDebug, setShowDebug] = useState(false)
+
+  const logDebug = (message: string) => {
+    console.log(message) // Also log to console
+    setDebugLog((prev) => [
+      ...prev,
+      `${new Date().toLocaleTimeString()}: ${message}`,
+    ])
+  }
+
+  const testUpload = async () => {
+    if (!file) return
+    logDebug(`Testing upload: ${file.name}`)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      logDebug(`Sending request to /api/test-upload`)
+      const response = await fetch('/api/test-upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+      logDebug(`Upload response: ${JSON.stringify(data)}`)
+
+      if (data.success) {
+        alert(
+          `File uploaded successfully!\nType: ${data.fileInfo.type}\nSize: ${data.fileInfo.size} bytes`
+        )
+      } else {
+        alert(`Upload failed: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Test upload error:', error)
+      logDebug(`Upload test error: ${error}`)
+      alert('Upload test failed')
+    }
+  }
+
   const handleFileChange = (selectedFile: File) => {
     setFile(selectedFile)
     const type = fileTypeMap[selectedFile.type] || defaultFileType
@@ -108,24 +150,24 @@ export default function FileConverter() {
     }
   }
 
-  const handleConvert = () => {
-    if (!file || !selectedConversion) return
+  // const handleConvert = () => {
+  //   if (!file || !selectedConversion) return
 
-    setConversionStatus('converting')
+  //   setConversionStatus('converting')
 
-    let progress = 0
-    const interval = setInterval(() => {
-      progress += Math.random() * 10
-      if (progress >= 100) {
-        progress = 100
-        clearInterval(interval)
-        setConversionProgress(100)
-        setConversionStatus('completed')
-      } else {
-        setConversionProgress(progress)
-      }
-    }, 300)
-  }
+  //   let progress = 0
+  //   const interval = setInterval(() => {
+  //     progress += Math.random() * 10
+  //     if (progress >= 100) {
+  //       progress = 100
+  //       clearInterval(interval)
+  //       setConversionProgress(100)
+  //       setConversionStatus('completed')
+  //     } else {
+  //       setConversionProgress(progress)
+  //     }
+  //   }, 300)
+  // }
 
   const resetConverter = () => {
     setFile(null)
@@ -232,12 +274,10 @@ export default function FileConverter() {
                   {conversionStatus === 'idle' && (
                     <Button
                       className="w-full sm:w-auto"
-                      onClick={handleConvert}
-                      disabled={
-                        !selectedConversion || fileType.conversions.length === 0
-                      }
+                      onClick={testUpload}
+                      disabled={!file}
                     >
-                      Convert Now
+                      Test Upload
                     </Button>
                   )}
 
@@ -294,6 +334,59 @@ export default function FileConverter() {
                 formats. The conversion is done securely on our servers and your
                 files are deleted after conversion.
               </p>
+            </div>
+
+            <div className="pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm font-medium mb-2">
+                  About this converter
+                </h4>
+                <Button
+                  variant="outline"
+                  size="small"
+                  onClick={() => setShowDebug(!showDebug)}
+                >
+                  {showDebug ? 'Hide Debug' : 'Show Debug'}
+                </Button>
+              </div>
+
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                This tool allows you to convert {fileType?.name} files to
+                various formats. The conversion is done securely on our servers
+                and your files are deleted after conversion.
+              </p>
+
+              {showDebug && (
+                <div className="mt-4 border rounded p-4 bg-slate-50 dark:bg-slate-900">
+                  <div className="mb-2 flex justify-between items-center">
+                    <h5 className="text-sm font-medium">Debug Log</h5>
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      onClick={() => setDebugLog([])}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+
+                  <div className="h-40 overflow-y-auto border rounded text-xs font-mono p-2 bg-white dark:bg-slate-800">
+                    {debugLog.length === 0 ? (
+                      <p className="text-slate-400 dark:text-slate-500">
+                        No log entries yet
+                      </p>
+                    ) : (
+                      debugLog.map((log, i) => (
+                        <div
+                          key={i}
+                          className="py-1 border-b border-slate-100 dark:border-slate-700 last:border-0"
+                        >
+                          {log}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
