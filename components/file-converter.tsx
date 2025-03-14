@@ -213,10 +213,10 @@ export default function FileConverter() {
 
   return (
     <Card className="w-full shadow-lg">
-      <CardContent className="p-6">
+      <CardContent className="p-4 md:p-6">
         {!file ? (
           <div
-            className={`border-2 border-dashed rounded-lg p-12 text-center ${
+            className={`border-2 border-dashed rounded-lg p-6 md:p-12 text-center ${
               isDragging
                 ? 'border-primary bg-primary/5'
                 : 'border-slate-300 dark:border-slate-700'
@@ -225,15 +225,15 @@ export default function FileConverter() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <div className="flex flex-col items-center justify-center gap-4">
-              <div className="bg-primary/10 p-4 rounded-full">
-                <Upload className="h-10 w-10 text-primary" />
+            <div className="flex flex-col items-center justify-center gap-3 md:gap-4">
+              <div className="bg-primary/10 p-3 md:p-4 rounded-full">
+                <Upload className="h-8 w-8 md:h-10 md:w-10 text-primary" />
               </div>
               <div>
-                <h3 className="text-lg font-medium">
+                <h3 className="text-base md:text-lg font-medium">
                   Drag and drop your file here
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
                   Supports PDF, DOCX, JPG, PNG, MP3, MP4, and more
                 </p>
               </div>
@@ -242,6 +242,7 @@ export default function FileConverter() {
                   onClick={() => fileInputRef.current?.click()}
                   variant="outline"
                   className="mt-2"
+                  size="small"
                 >
                   Browse Files
                 </Button>
@@ -259,34 +260,36 @@ export default function FileConverter() {
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-medium">File Conversion</h3>
+              <h3 className="text-lg md:text-xl font-medium">
+                File Conversion
+              </h3>
               <Button variant="ghost" size="icon" onClick={resetConverter}>
                 <X className="h-5 w-5" />
               </Button>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-6 items-center">
-              <div className="flex items-center gap-3 min-w-[180px]">
-                {fileType?.icon}
-                <div>
+            <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center">
+              <div className="flex items-center gap-3 w-full md:min-w-[180px] md:w-auto">
+                <div className="flex-shrink-0">{fileType?.icon}</div>
+                <div className="min-w-0 flex-1">
                   <p className="font-medium">{fileType?.name} File</p>
-                  <p className="text-sm text-slate-500 truncate max-w-[150px]">
+                  <p className="text-sm text-slate-500 truncate max-w-full">
                     {file.name}
                   </p>
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <ArrowRight className="hidden sm:block h-5 w-5 text-slate-400" />
+              <div className="flex-1 w-full flex flex-col gap-4">
+                <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2 w-full">
+                  <ArrowRight className="hidden xs:block h-5 w-5 text-slate-400" />
                   <Select
                     value={selectedConversion}
                     onValueChange={setSelectedConversion}
                     disabled={conversionStatus === 'converting'}
                   >
-                    <SelectTrigger className="w-full sm:w-[120px]">
+                    <SelectTrigger className="w-full xs:w-[120px]">
                       <SelectValue placeholder="Select format" />
                     </SelectTrigger>
                     <SelectContent>
@@ -304,50 +307,54 @@ export default function FileConverter() {
                       )}
                     </SelectContent>
                   </Select>
-                </div>
 
-                <div className="flex-1 w-full">
                   {conversionStatus === 'idle' && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full xs:w-auto mt-2 xs:mt-0">
                       <Button
-                        className="w-full sm:w-auto"
+                        className="flex-1 xs:flex-initial"
                         onClick={handleConvert}
                         disabled={
                           !file ||
                           !selectedConversion ||
                           fileType?.conversions.length === 0
                         }
+                        size="small"
                       >
                         Convert
                       </Button>
                       {isDevelopment && (
                         <Button
-                          className="w-full sm:w-auto"
+                          className="flex-1 xs:flex-initial"
                           variant="outline"
                           onClick={testUpload}
                           disabled={!file}
+                          size="small"
                         >
                           Test Upload
                         </Button>
                       )}
                     </div>
                   )}
+                </div>
 
+                <div className="w-full">
                   {conversionStatus === 'converting' && (
                     <div className="w-full space-y-2">
                       <Progress value={conversionProgress} className="h-2" />
-                      <p className="text-sm text-slate-500">
+                      <p className="text-xs md:text-sm text-slate-500">
                         Converting... {Math.round(conversionProgress)}%
                       </p>
                     </div>
                   )}
 
                   {conversionStatus === 'completed' && (
-                    <div className="flex items-center gap-2">
-                      <Check className="h-5 w-5 text-green-500" />
-                      <span className="text-sm text-green-500">
-                        Conversion complete!
-                      </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center">
+                        <Check className="h-5 w-5 text-green-500 mr-1" />
+                        <span className="text-xs md:text-sm text-green-500">
+                          Conversion complete!
+                        </span>
+                      </div>
                       <Button
                         variant="outline"
                         size="small"
@@ -361,7 +368,7 @@ export default function FileConverter() {
                   )}
 
                   {conversionStatus === 'error' && (
-                    <Alert variant="destructive" className="py-2">
+                    <Alert variant="destructive" className="py-2 text-sm">
                       <AlertDescription>
                         {errorMessage || 'Conversion failed. Please try again.'}
                       </AlertDescription>
@@ -372,7 +379,7 @@ export default function FileConverter() {
             </div>
 
             {fileType?.conversions.length === 0 && (
-              <Alert className="bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800/30">
+              <Alert className="bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800/30 text-sm">
                 <AlertDescription>
                   This file type cannot be converted. Please try a different
                   file.
@@ -382,38 +389,44 @@ export default function FileConverter() {
 
             <div className="pt-4 border-t">
               <div className="flex justify-between items-center">
-                <h4 className="text-sm font-medium mb-2">Debug Options</h4>
+                <h4 className="text-xs md:text-sm font-medium mb-2">
+                  Debug Options
+                </h4>
                 {isDevelopment && (
                   <Button
                     variant="outline"
                     size="small"
                     onClick={() => setShowDebug(!showDebug)}
+                    className="text-xs"
                   >
                     {showDebug ? 'Hide Debug' : 'Show Debug'}
                   </Button>
                 )}
               </div>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
                 This tool allows you to convert {fileType?.name} files to
                 various formats. The conversion is done securely on our servers
                 and your files are deleted after conversion.
               </p>
 
               {isDevelopment && showDebug && (
-                <div className="mt-4 border rounded p-4 bg-slate-50 dark:bg-slate-900">
+                <div className="mt-4 border rounded p-3 md:p-4 bg-slate-50 dark:bg-slate-900">
                   <div className="mb-2 flex justify-between items-center">
-                    <h5 className="text-sm font-medium">Debug Log</h5>
+                    <h5 className="text-xs md:text-sm font-medium">
+                      Debug Log
+                    </h5>
                     <Button
                       variant="ghost"
                       size="small"
                       onClick={() => setDebugLog([])}
+                      className="h-7 text-xs"
                     >
                       Clear
                     </Button>
                   </div>
 
-                  <div className="h-40 overflow-y-auto border rounded text-xs font-mono p-2 bg-white dark:bg-slate-800">
+                  <div className="h-32 md:h-40 overflow-y-auto border rounded text-xs font-mono p-2 bg-white dark:bg-slate-800">
                     {debugLog.length === 0 ? (
                       <p className="text-slate-400 dark:text-slate-500">
                         No log entries yet
@@ -422,7 +435,7 @@ export default function FileConverter() {
                       debugLog.map((log, i) => (
                         <div
                           key={i}
-                          className="py-1 border-b border-slate-100 dark:border-slate-700 last:border-0"
+                          className="py-1 border-b border-slate-100 dark:border-slate-700 last:border-0 break-words"
                         >
                           {log}
                         </div>
