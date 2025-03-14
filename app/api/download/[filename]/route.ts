@@ -5,10 +5,10 @@ import { uploadDir } from '@/utils/file-upload'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { filename: string } }
+  { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
-    const { filename } = params
+    const filename = (await params).filename
     const filePath = path.join(uploadDir, filename)
 
     // Check if file exists
