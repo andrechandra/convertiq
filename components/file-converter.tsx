@@ -2,7 +2,7 @@
 
 import type React from 'react'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Upload, ArrowRight, File, Download, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,64 +15,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-
-// File type mapping
-const fileTypeMap: Record<
-  string,
-  { name: string; icon: React.ReactNode; conversions: string[] }
-> = {
-  'application/pdf': {
-    name: 'PDF',
-    icon: <File className="h-10 w-10 text-red-500" />,
-    conversions: ['DOCX', 'JPG', 'PNG', 'TXT'],
-  },
-  'application/msword': {
-    name: 'DOC',
-    icon: <File className="h-10 w-10 text-blue-500" />,
-    conversions: ['PDF', 'DOCX', 'TXT'],
-  },
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
-    name: 'DOCX',
-    icon: <File className="h-10 w-10 text-blue-500" />,
-    conversions: ['PDF', 'DOC', 'TXT'],
-  },
-  'image/jpeg': {
-    name: 'JPG',
-    icon: <File className="h-10 w-10 text-green-500" />,
-    conversions: ['PNG', 'PDF', 'WEBP'],
-  },
-  'image/png': {
-    name: 'PNG',
-    icon: <File className="h-10 w-10 text-green-500" />,
-    conversions: ['JPG', 'PDF', 'WEBP'],
-  },
-  'audio/mpeg': {
-    name: 'MP3',
-    icon: <File className="h-10 w-10 text-purple-500" />,
-    conversions: ['WAV', 'OGG', 'AAC'],
-  },
-  'video/mp4': {
-    name: 'MP4',
-    icon: <File className="h-10 w-10 text-orange-500" />,
-    conversions: ['AVI', 'MOV', 'GIF', 'WEBM'],
-  },
-  'text/plain': {
-    name: 'TXT',
-    icon: <File className="h-10 w-10 text-gray-500" />,
-    conversions: ['PDF', 'DOCX'],
-  },
-}
-
-const defaultFileType = {
-  name: 'Unknown',
-  icon: <File className="h-10 w-10 text-gray-500" />,
-  conversions: [],
-}
+import fileTypeMap, { defaultFileType, FileTypeInfo } from '@/utils/file-types'
 
 export default function FileConverter() {
+  // Check if we're in development mode
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  const [fileType, setFileType] = useState<FileTypeInfo | null>(null)
   const [file, setFile] = useState<File | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [fileType, setFileType] = useState<any>(null)
   const [selectedConversion, setSelectedConversion] = useState<string>('')
   const [isDragging, setIsDragging] = useState(false)
   const [conversionProgress, setConversionProgress] = useState(0)
@@ -80,17 +29,47 @@ export default function FileConverter() {
     'idle' | 'converting' | 'completed' | 'error'
   >('idle')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [downloadInfo, setDownloadInfo] = useState<{
+    id: string
+    filename: string
+  } | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string>('')
 
   const [debugLog, setDebugLog] = useState<string[]>([])
   const [showDebug, setShowDebug] = useState(false)
 
   const logDebug = (message: string) => {
     console.log(message) // Also log to console
-    setDebugLog((prev) => [
-      ...prev,
-      `${new Date().toLocaleTimeString()}: ${message}`,
-    ])
+    if (isDevelopment) {
+      setDebugLog((prev) => [
+        ...prev,
+        `${new Date().toLocaleTimeString()}: ${message}`,
+      ])
+    }
   }
+
+  // Simulated progress updates
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>
+
+    if (conversionStatus === 'converting') {
+      let progress = 0
+      interval = setInterval(() => {
+        progress += Math.random() * 5 + 3 // Random increment between 3-8%
+
+        if (progress >= 100) {
+          progress = 100
+          clearInterval(interval)
+        }
+
+        setConversionProgress(progress)
+      }, 300)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [conversionStatus])
 
   const testUpload = async () => {
     if (!file) return
@@ -123,13 +102,84 @@ export default function FileConverter() {
     }
   }
 
+  const handleConvert = async () => {
+    if (!file || !selectedConversion) return
+
+    setConversionStatus('converting')
+    setConversionProgress(0)
+    logDebug(`Starting conversion to ${selectedConversion}`)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('targetFormat', selectedConversion)
+
+      logDebug(`Sending request to /api/convert`)
+
+      // The actual conversion request
+      const response = await fetch('/api/convert', {
+        method: 'POST',
+        body: formData,
+      })
+
+      logDebug(`Got response with status: ${response.status}`)
+
+      // Check if the response is OK before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text()
+        logDebug(`Error response: ${errorText.substring(0, 150)}...`)
+        throw new Error(
+          `Server error: ${response.status} ${response.statusText}`
+        )
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        setDownloadInfo({
+          id: data.downloadId,
+          filename: data.filename,
+        })
+        setConversionProgress(100)
+        setConversionStatus('completed')
+      } else {
+        setErrorMessage(data.error || 'Conversion failed')
+        setConversionStatus('error')
+      }
+    } catch (error) {
+      console.error('Conversion error:', error)
+      logDebug(`Conversion error: ${error}`)
+      setErrorMessage((error as Error).message || 'Conversion failed')
+      setConversionStatus('error')
+    }
+  }
+
+  const handleDownload = () => {
+    if (!downloadInfo) return
+
+    const downloadUrl = `/api/download/${downloadInfo.filename}`
+    logDebug(`Downloading from: ${downloadUrl}`)
+
+    // Create an anchor element and trigger download
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = downloadInfo.filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
   const handleFileChange = (selectedFile: File) => {
     setFile(selectedFile)
     const type = fileTypeMap[selectedFile.type] || defaultFileType
     setFileType(type)
     setSelectedConversion(type.conversions[0] || '')
+    logDebug(`File Types: ${type.conversions}`)
     setConversionStatus('idle')
     setConversionProgress(0)
+    setDownloadInfo(null)
+    setErrorMessage('')
+    logDebug(`File selected: ${selectedFile.name} (${selectedFile.type})`)
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -150,31 +200,15 @@ export default function FileConverter() {
     }
   }
 
-  // const handleConvert = () => {
-  //   if (!file || !selectedConversion) return
-
-  //   setConversionStatus('converting')
-
-  //   let progress = 0
-  //   const interval = setInterval(() => {
-  //     progress += Math.random() * 10
-  //     if (progress >= 100) {
-  //       progress = 100
-  //       clearInterval(interval)
-  //       setConversionProgress(100)
-  //       setConversionStatus('completed')
-  //     } else {
-  //       setConversionProgress(progress)
-  //     }
-  //   }, 300)
-  // }
-
   const resetConverter = () => {
     setFile(null)
     setFileType(null)
     setSelectedConversion('')
     setConversionStatus('idle')
     setConversionProgress(0)
+    setDownloadInfo(null)
+    setErrorMessage('')
+    logDebug('Converter reset')
   }
 
   return (
@@ -235,9 +269,9 @@ export default function FileConverter() {
 
             <div className="flex flex-col sm:flex-row gap-6 items-center">
               <div className="flex items-center gap-3 min-w-[180px]">
-                {fileType.icon}
+                {fileType?.icon}
                 <div>
-                  <p className="font-medium">{fileType.name} File</p>
+                  <p className="font-medium">{fileType?.name} File</p>
                   <p className="text-sm text-slate-500 truncate max-w-[150px]">
                     {file.name}
                   </p>
@@ -250,12 +284,14 @@ export default function FileConverter() {
                   <Select
                     value={selectedConversion}
                     onValueChange={setSelectedConversion}
+                    disabled={conversionStatus === 'converting'}
                   >
                     <SelectTrigger className="w-full sm:w-[120px]">
                       <SelectValue placeholder="Select format" />
                     </SelectTrigger>
                     <SelectContent>
-                      {fileType.conversions.length > 0 ? (
+                      {fileType?.conversions &&
+                      fileType.conversions.length > 0 ? (
                         fileType.conversions.map((format: string) => (
                           <SelectItem key={format} value={format}>
                             {format}
@@ -272,13 +308,29 @@ export default function FileConverter() {
 
                 <div className="flex-1 w-full">
                   {conversionStatus === 'idle' && (
-                    <Button
-                      className="w-full sm:w-auto"
-                      onClick={testUpload}
-                      disabled={!file}
-                    >
-                      Test Upload
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        className="w-full sm:w-auto"
+                        onClick={handleConvert}
+                        disabled={
+                          !file ||
+                          !selectedConversion ||
+                          fileType?.conversions.length === 0
+                        }
+                      >
+                        Convert
+                      </Button>
+                      {isDevelopment && (
+                        <Button
+                          className="w-full sm:w-auto"
+                          variant="outline"
+                          onClick={testUpload}
+                          disabled={!file}
+                        >
+                          Test Upload
+                        </Button>
+                      )}
+                    </div>
                   )}
 
                   {conversionStatus === 'converting' && (
@@ -300,6 +352,7 @@ export default function FileConverter() {
                         variant="outline"
                         size="small"
                         className="ml-auto"
+                        onClick={handleDownload}
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Download
@@ -310,7 +363,7 @@ export default function FileConverter() {
                   {conversionStatus === 'error' && (
                     <Alert variant="destructive" className="py-2">
                       <AlertDescription>
-                        Conversion failed. Please try again.
+                        {errorMessage || 'Conversion failed. Please try again.'}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -318,7 +371,7 @@ export default function FileConverter() {
               </div>
             </div>
 
-            {fileType.conversions.length === 0 && (
+            {fileType?.conversions.length === 0 && (
               <Alert className="bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800/30">
                 <AlertDescription>
                   This file type cannot be converted. Please try a different
@@ -328,26 +381,17 @@ export default function FileConverter() {
             )}
 
             <div className="pt-4 border-t">
-              <h4 className="text-sm font-medium mb-2">About this converter</h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                This tool allows you to convert {fileType.name} files to various
-                formats. The conversion is done securely on our servers and your
-                files are deleted after conversion.
-              </p>
-            </div>
-
-            <div className="pt-4 border-t">
               <div className="flex justify-between items-center">
-                <h4 className="text-sm font-medium mb-2">
-                  About this converter
-                </h4>
-                <Button
-                  variant="outline"
-                  size="small"
-                  onClick={() => setShowDebug(!showDebug)}
-                >
-                  {showDebug ? 'Hide Debug' : 'Show Debug'}
-                </Button>
+                <h4 className="text-sm font-medium mb-2">Debug Options</h4>
+                {isDevelopment && (
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => setShowDebug(!showDebug)}
+                  >
+                    {showDebug ? 'Hide Debug' : 'Show Debug'}
+                  </Button>
+                )}
               </div>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -356,7 +400,7 @@ export default function FileConverter() {
                 and your files are deleted after conversion.
               </p>
 
-              {showDebug && (
+              {isDevelopment && showDebug && (
                 <div className="mt-4 border rounded p-4 bg-slate-50 dark:bg-slate-900">
                   <div className="mb-2 flex justify-between items-center">
                     <h5 className="text-sm font-medium">Debug Log</h5>
