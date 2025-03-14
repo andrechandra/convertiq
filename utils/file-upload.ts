@@ -2,7 +2,10 @@ import fs from 'fs-extra'
 import path from 'path'
 
 // Set up temp directory for file uploads
-export const uploadDir = path.join(process.cwd(), 'temp/uploads')
+export const uploadDir =
+  process.env.NODE_ENV === 'production'
+    ? '/tmp/file-converter-uploads' // Use /tmp in production (works in Lambda)
+    : path.join(process.cwd(), 'temp/upload')
 
 // Ensure directory exists
 export const ensureUploadDir = async () => {
