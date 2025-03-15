@@ -3,7 +3,7 @@
 import type React from 'react'
 
 import { useState, useRef, useEffect } from 'react'
-import { Upload, ArrowRight, File, Download, X, Check } from 'lucide-react'
+import { Upload, ArrowRight, Download, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -19,7 +19,7 @@ import fileTypeMap, { defaultFileType, FileTypeInfo } from '@/utils/file-types'
 
 export default function FileConverter() {
   // Check if we're in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development'
+  const isDevelopment = process.env.NODE_ENV === 'production'
   const [fileType, setFileType] = useState<FileTypeInfo | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [selectedConversion, setSelectedConversion] = useState<string>('')
@@ -34,6 +34,8 @@ export default function FileConverter() {
     filename: string
   } | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const [debugLog, setDebugLog] = useState<string[]>([])
   const [showDebug, setShowDebug] = useState(false)
@@ -160,6 +162,25 @@ export default function FileConverter() {
     const downloadUrl = `/api/download/${downloadInfo.filename}`
     logDebug(`Downloading from: ${downloadUrl}`)
 
+    setIsDownloading(true)
+    setDownloadProgress(0)
+
+    // Simulate download progress
+    const downloadInterval = setInterval(() => {
+      setDownloadProgress((prev) => {
+        const newProgress = prev + Math.random() * 10 + 5
+        if (newProgress >= 100) {
+          clearInterval(downloadInterval)
+          setTimeout(() => {
+            setIsDownloading(false)
+            setDownloadProgress(0)
+          }, 500)
+          return 100
+        }
+        return newProgress
+      })
+    }, 200)
+
     // Create an anchor element and trigger download
     const a = document.createElement('a')
     a.href = downloadUrl
@@ -209,6 +230,14 @@ export default function FileConverter() {
     setDownloadInfo(null)
     setErrorMessage('')
     logDebug('Converter reset')
+  }
+
+  const handleConvertAgain = () => {
+    setConversionStatus('idle')
+    setConversionProgress(0)
+    setDownloadInfo(null)
+    setErrorMessage('')
+    logDebug('Preparing for new conversion')
   }
 
   return (
@@ -271,7 +300,7 @@ export default function FileConverter() {
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center">
-              <div className="flex items-center gap-3 w-full md:min-w-[180px] md:w-auto">
+              <div className="flex items-center gap-3 w-full md:w-3/5">
                 <div className="flex-shrink-0">{fileType?.icon}</div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{fileType?.name} File</p>
@@ -281,32 +310,40 @@ export default function FileConverter() {
                 </div>
               </div>
 
-              <div className="flex-1 w-full flex flex-col gap-4">
+              <div className="w-full md:max-w-2/5 flex flex-col gap-4">
                 <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2 w-full">
                   <ArrowRight className="hidden xs:block h-5 w-5 text-slate-400" />
-                  <Select
-                    value={selectedConversion}
-                    onValueChange={setSelectedConversion}
-                    disabled={conversionStatus === 'converting'}
-                  >
-                    <SelectTrigger className="w-full xs:w-[120px]">
-                      <SelectValue placeholder="Select format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fileType?.conversions &&
-                      fileType.conversions.length > 0 ? (
-                        fileType.conversions.map((format: string) => (
-                          <SelectItem key={format} value={format}>
-                            {format}
+
+                  {conversionStatus === 'idle' && (
+                    <Select
+                      value={selectedConversion}
+                      onValueChange={setSelectedConversion}
+                    >
+                      <SelectTrigger className="w-full xs:w-[120px]">
+                        <SelectValue placeholder="Select format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fileType?.conversions &&
+                        fileType.conversions.length > 0 ? (
+                          fileType.conversions.map((format: string) => (
+                            <SelectItem key={format} value={format}>
+                              {format}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No conversions available
                           </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          No conversions available
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {conversionStatus !== 'idle' && (
+                    <div className="w-full xs:w-[120px] p-2 border rounded text-center text-sm">
+                      {selectedConversion}
+                    </div>
+                  )}
 
                   {conversionStatus === 'idle' && (
                     <div className="flex gap-2 w-full xs:w-auto mt-2 xs:mt-0">
@@ -347,23 +384,43 @@ export default function FileConverter() {
                     </div>
                   )}
 
-                  {conversionStatus === 'completed' && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex items-center">
-                        <Check className="h-5 w-5 text-green-500 mr-1" />
-                        <span className="text-xs md:text-sm text-green-500">
-                          Conversion complete!
-                        </span>
+                  {conversionStatus === 'completed' && !isDownloading && (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center">
+                          <Check className="h-5 w-5 text-green-500 mr-1" />
+                          <span className="text-xs md:text-sm text-green-500">
+                            Conversion complete!
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="small"
+                          className="ml-auto"
+                          onClick={handleDownload}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
                       </div>
+
                       <Button
                         variant="outline"
                         size="small"
-                        className="ml-auto"
-                        onClick={handleDownload}
+                        onClick={handleConvertAgain}
+                        className="w-full"
                       >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
+                        Convert Again
                       </Button>
+                    </div>
+                  )}
+
+                  {isDownloading && (
+                    <div className="w-full space-y-2">
+                      <Progress value={downloadProgress} className="h-2" />
+                      <p className="text-xs md:text-sm text-slate-500">
+                        Downloading... {Math.round(downloadProgress)}%
+                      </p>
                     </div>
                   )}
 
@@ -389,9 +446,11 @@ export default function FileConverter() {
 
             <div className="pt-4 border-t">
               <div className="flex justify-between items-center">
-                <h4 className="text-xs md:text-sm font-medium mb-2">
-                  Debug Options
-                </h4>
+                {isDevelopment && (
+                  <h4 className="text-xs md:text-sm font-medium mb-2">
+                    Debug Options
+                  </h4>
+                )}
                 {isDevelopment && (
                   <Button
                     variant="outline"

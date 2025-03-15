@@ -22,6 +22,15 @@ export async function GET(
     // Get file extension
     const ext = path.extname(filename).substring(1).toLowerCase()
 
+    // Extract just the name part without extension
+    const nameWithoutExt = path.basename(filename, path.extname(filename))
+
+    // Remove timestamp pattern (assuming it's a dash followed by numbers at the end)
+    const cleanName = nameWithoutExt.replace(/-\d+$/, '')
+
+    // Create display filename with "- Converted" added
+    const displayFilename = `${cleanName} - Converted.${ext}`
+
     // Set appropriate content type
     let contentType = 'application/octet-stream'
 
@@ -62,7 +71,7 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${displayFilename}"`,
       },
     })
   } catch (error) {

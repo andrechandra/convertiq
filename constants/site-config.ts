@@ -1,5 +1,5 @@
 export const siteConfig = {
-  title: 'Convertiq | File Converter',
+  title: 'ConvertiQ | File Converter',
   description:
     '	Next.js application for converting files between different formats',
   keywords: [
